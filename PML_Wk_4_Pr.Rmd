@@ -1,0 +1,156 @@
+---
+title: "Practical Machine Learning Week 4 Project"
+author: A K M Anisur Rahman
+output: html_document
+---
+## Background: 
+Fitness devices like Jawbone Up, Nike FuelBand, and Fitbit enable to collect large amount personal activity data relatively inexpensively.  In this project, data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants will be used.
+Six male young health participants performed one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions [outcome variable in the model]: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). The purpose of this project is to select and build an optimal machine learning model to predict 20 test cases. 
+
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Setting Working directory and loading required packages
+```{r}
+setwd("C:/Users/Medicine/Desktop/Practical Machine Learning")
+suppressWarnings(suppressMessages(library(caret)))
+suppressWarnings(suppressMessages(library(kernlab)))
+suppressWarnings(suppressMessages(library(dplyr)))
+suppressWarnings(suppressMessages(library(RANN)))
+suppressWarnings(suppressMessages(library(rattle)))
+suppressWarnings(suppressMessages(library(rpart)))
+suppressWarnings(suppressMessages(library(randomForest)))
+suppressWarnings(suppressMessages(library(gbm)))
+suppressWarnings(suppressMessages(library(rpart.plot)))
+suppressWarnings(suppressMessages(library(RColorBrewer)))
+```
+## Downloading and reading raw data
+```{r}
+urltrain <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(urltrain, destfile="pml-training.csv")
+urltest <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(urltest, destfile="pml-testing.csv")
+Traindat <- read.csv("pml-training.csv", header=TRUE)
+Testdat <- read.csv("pml-testing.csv", header=TRUE)
+```
+## Remving variables having near zero variance
+```{r}
+nzvar <- nearZeroVar(Traindat)
+
+traindat <- Traindat[,-nzvar]
+testdat <- Testdat[,-nzvar]
+dim(traindat)
+dim(testdat)
+```
+
+After removing variables with near zero variance the training data contain 100 variables and 19622 rows/observation. On the other hand the test data contains only 20 observations and 100 variables.
+
+## Removing first 6 colums which are not relevant for the model
+The first six columns/variables were removed as they were not related with the outcome variable.
+```{r}
+clean_traindat <- traindat[,-c(1:6)]
+clean_testdat <- testdat[,-c(1:6)]
+```
+
+## Removing those variable with more than 95% missing values
+
+```{r}
+varwmissval <- colSums(is.na(clean_traindat))/nrow(clean_traindat) < 0.95
+Training_data <- clean_traindat[,varwmissval]
+dim(Training_data)
+```
+After removing those variables with more than 95% missing values
+ the training data contains only 53 variables. 
+ 
+## Imputing missing values by using caret's preProcess function
+
+The variables with missing values in training data were imputed by using preProcess function.
+```{r}
+# Setting seed for reproducible purposes
+set.seed(30912) 
+Obj_imputed <- preProcess(Training_data[,-53],method = "knnImpute")
+
+#New training data with imputed missing values
+imputed_traindat <- predict(Obj_imputed, Training_data)
+```
+
+## Splitting a validation set from training data
+
+The training data was then divided into training (75%) and validation (25%) data 
+
+```{r}
+set.seed(50391)
+inTrain <- createDataPartition(y = imputed_traindat$classe,p = 0.75, list = FALSE)
+training <- imputed_traindat[inTrain, ]
+validation <- imputed_traindat[-inTrain, ]
+
+```
+
+## Cnnverting testing data 
+
+```{r}
+vartrain<- names(training)
+testing <- clean_testdat[,vartrain[1:52]]
+```
+
+The variables with more than 95% missing values in testing data and also the outcome variable ('classe') were removed. Now the testing data contains 52 predictor variables with 20 observations.
+
+## Machine Learning algorith: classification tree
+
+## Prediction with classification trees 
+
+```{r} 
+memory.limit(size=9800)
+mod_clastre<- train(classe ~. , data=training, method= "rpart")
+```
+## Plotting the classification tree
+```{r}
+fancyRpartPlot(mod_clastre$finalModel)
+```
+
+## Accuracy of the classification tree model
+
+```{r}
+predtree <- predict(mod_clastre, validation)
+confusionMatrix(predtree, as.factor(validation$classe))
+```
+
+The overall accuracy of the classification tree model is very poor (49%).
+
+## Machine learning algorithm: Gradient boosting
+```{r}
+set.seed(50013)
+modgbm<- train(classe~., data=training, method="gbm", verbose= FALSE)
+```
+
+## Prediction with gbm
+```{r}
+predgbm<- predict(modgbm, validation)
+confusionMatrix(predgbm, as.factor(validation$classe))
+```
+
+The performance of the gradient boosting (96%) is better than classification tree.
+
+## Machine learning algorithm - Random Forest
+```{r}
+Modrf <- train(classe ~., method='rf', data=training, ntree=100,importance=TRUE)
+varImp(Modrf)
+```
+## Prediction with random forest
+```{r}
+Predrf <- predict(Modrf, validation)
+confusionMatrix(Predrf,as.factor(validation$classe))
+```
+
+The overall accuracy of random forest model is very high (99.3%) which is better than gradient boosting. So, the random forest algorithm will be used to predict 20 test cases.
+
+## Final Prediction using Randon Forest with test data
+
+As mentioned earlier, the test data contains 20 rows without the outcome variable [classe]. The trained random forest model will be run on the test data to get predictions for the classe variables
+```{r}
+# New testing data with imputed missing values
+imputed_testdat <- predict(Obj_imputed, testing)
+testpred <- predict(Modrf, newdata = imputed_testdat)
+testpred 
+```
