@@ -6,8 +6,7 @@ output: html_document
 ## Background: 
 Fitness devices like Jawbone Up, Nike FuelBand, and Fitbit enable to collect large amount personal activity data relatively inexpensively.  In this project, data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants will be used.
 Six male young health participants performed one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions [outcome variable in the model]: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). The purpose of this project is to select and build an optimal machine learning model to predict 20 test cases. 
-
-  
+ 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -43,7 +42,6 @@ testdat <- Testdat[,-nzvar]
 dim(traindat)
 dim(testdat)
 ```
-
 After removing variables with near zero variance the training data contain 100 variables and 19622 rows/observation. On the other hand the test data contains only 20 observations and 100 variables.
 
 ## Removing first 6 colums which are not relevant for the model
@@ -60,8 +58,7 @@ varwmissval <- colSums(is.na(clean_traindat))/nrow(clean_traindat) < 0.95
 Training_data <- clean_traindat[,varwmissval]
 dim(Training_data)
 ```
-After removing those variables with more than 95% missing values
- the training data contains only 53 variables. 
+After removing those variables with more than 95% missing values the training data contains only 53 variables. 
  
 ## Imputing missing values by using caret's preProcess function
 
@@ -84,7 +81,6 @@ set.seed(50391)
 inTrain <- createDataPartition(y = imputed_traindat$classe,p = 0.75, list = FALSE)
 training <- imputed_traindat[inTrain, ]
 validation <- imputed_traindat[-inTrain, ]
-
 ```
 
 ## Cnnverting testing data 
@@ -108,7 +104,6 @@ mod_clastre<- train(classe ~. , data=training, method= "rpart")
 ```{r}
 fancyRpartPlot(mod_clastre$finalModel)
 ```
-
 ## Accuracy of the classification tree model
 
 ```{r}
